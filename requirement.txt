@@ -17,6 +17,7 @@ pyparsing==2.4.7
 pysmi==0.3.4
 pysnmp==4.4.12
 python-dateutil==2.8.1
+python-dotenv==0.17.1
 six==1.16.0
 typing-extensions==3.10.0.0
 yarl==1.6.3
