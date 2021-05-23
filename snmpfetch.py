@@ -1,13 +1,27 @@
 from pysnmp.hlapi import *
 from pysnmp.proto.rfc1905 import VarBind
 
-class INTERFACE():
-    def __init__(self, index, desc, ip, adminstat, operstat):
-        self.index = index
-        self.desc = desc
+class DEVICE():
+    def __init__(self, ip):
         self.ip = ip
-        self.adminstat = adminstat
-        self.operstat = operstat
+        self.interfaces = fetch_interfaces(ip, True)
+        self.getifspeed()
+        self.inoctets = {index:[] for index in self.interfaces}
+
+    def update_interval(self):
+        """Update Interval"""
+        self.inoctets = {index:[] for index in self.interfaces}
+    
+    def lookup_octet(self):
+        interfaces_inoct = iter(snmp_walk(self.ip, '1.3.6.1.2.1.2.2.1.10'))
+        for index in self.interfaces:
+            self.inoctets[index].append(int(next(interfaces_inoct)))
+        print(self.inoctets)
+
+    def getifspeed(self):
+        interfaces_desc = iter(snmp_walk(self.ip, '1.3.6.1.2.1.2.2.1.5'))
+        for index in self.interfaces:
+            self.interfaces[index]['speed'] = int(next(interfaces_desc))
 
 def fetch_oid(target, oid, walk_lenght):
     """Fetch Target's Object at OID"""
@@ -35,7 +49,7 @@ def fetch_oid(target, oid, walk_lenght):
     return result
 
 def fetchstr_oid(target, oid, walk_lenght):
-    """Fetch Target's Object at OID"""
+    """Fetch Target's Object at OID and return as string"""
     iterator = nextCmd(
         SnmpEngine(),
         CommunityData('public', mpModel=0),
@@ -60,6 +74,7 @@ def fetchstr_oid(target, oid, walk_lenght):
     return result
 
 def snmp_walk(target, oid):
+    """walk till deepest of mib tree's branch"""
     result = []
     for errorIndication, errorStatus, errorIndex, varBinds in nextCmd(SnmpEngine(), 
                           CommunityData('public'),
@@ -68,7 +83,7 @@ def snmp_walk(target, oid):
                           ObjectType(ObjectIdentity(oid)),
                           lexicographicMode=False):
         if errorIndication:
-            return errorIndication
+            return str(errorIndication)
         elif errorStatus:
             return '%s at %s' % (errorStatus.prettyPrint(),
                                 errorIndex and varBinds[int(errorIndex) - 1][0] or '?')
@@ -77,9 +92,11 @@ def snmp_walk(target, oid):
     return result
 
 
-def fetch_interfaces(target):
+def fetch_interfaces(target, returnif=False):
     """Fetch Target's Interfaces"""
-    # interfaces_amount = int(fetch_oid(target, '1.3.6.1.2.1.2.1', 1)[0]) - 2
+    if snmp_walk(target, '1.3.6.1.2.1.2.2.1') == 'No SNMP response received before timeout':
+        return 'Time out.'
+
     interfaces = {index:{} for index in map(int, snmp_walk(target, '1.3.6.1.2.1.2.2.1.1'))}
     interfaces_desc = iter(snmp_walk(target, '1.3.6.1.2.1.2.2.1.2'))
     interfaces_adminstat = iter(snmp_walk(target, '1.3.6.1.2.1.2.2.1.7'))
@@ -87,8 +104,8 @@ def fetch_interfaces(target):
     interfaces_ip = iter(snmp_walk(target, '1.3.6.1.2.1.4.20.1.1'))
     interfaces_netmask = iter(snmp_walk(target, '1.3.6.1.2.1.4.20.1.3'))
 
+    
 
-    # print(interfaces_desc)
     for index in interfaces:
         interfaces[index]['desc'] = next(interfaces_desc)
         interfaces[index]['adminstat'] = ('UP', 'DOWN', 'TESTING')[int(next(interfaces_adminstat)) - 1]
@@ -98,6 +115,8 @@ def fetch_interfaces(target):
         interfaces[index]['ip'] = next(interfaces_ip)
         interfaces[index]['netmask'] = next(interfaces_netmask)
 
+    if returnif:
+        return interfaces
     reply = f'Device: {target}\n------------------------\nINDEX   DESC                IP             MASK           STATUS\n'
     for index in interfaces:
         desc = interfaces[index]['desc']
@@ -110,14 +129,15 @@ def fetch_interfaces(target):
         # print(reply)
     return reply
     
-    # # 1.3.6.1.2.1.2.2.1.1
-    # interfaces_adminstat = fetch_oid(target, '1.3.6.1.2.1.2.2.1.7', interfaces_amount)
-    # interfaces_adminstat = [('up', 'down', 'testing')[int(stat)-1] for stat in interfaces_adminstat]
-    # interfaces_operstat = fetch_oid(target, '1.3.6.1.2.1.2.2.1.8', interfaces_amount)
-    # interfaces_operstat = [('up', 'down', 'testing')[int(stat)-1] for stat in interfaces_operstat]
-    # print(interfaces_desc)
-    # print(interfaces_adminstat)
-    # print(interfaces_operstat)
-    # return interfaces_amount
+def fetch_ifutilization(target):
+    """Fetch interfaces ultilization of target device"""
+    interfaces_desc = iter(snmp_walk(target, '1.3.6.1.2.1.2.2.1.2'))
+    interfaces_speed = iter(snmp_walk(target, '1.3.6.1.2.1.2.2.1.5'))
+    interfaces_operstat = iter(snmp_walk(target, '1.3.6.1.2.1.2.2.1.8'))
 
+    # interface
+
+
+# print(snmp_walk('10.0.15.213', '1.3.6.1.2.1.2.2.1.5'))
+# 1.3.6.1.2.1.2.2.1.5
 # print(fetch_interfaces('10.0.15.213'))

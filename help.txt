@@ -1,0 +1,15 @@
+Syntax                          Descriptions
+------------------------------------------------------------------------------------------------
+$noticeme                       add you to notification group
+$notilist                       show users in notification group
+$hello                          greeting you
+$netgraph                       send you mighty ant pic
+$addtarget <address>            add device to target group
+$removetarget <address>         remove device from target group
+$targetlist                     show devices in target group
+$fetchtarget <adress> <oid>     fetch object at oid from specific target address
+$fetch  <oid>                   fetch object at oid from all devices in target group
+$showinterfaces                 show interfaces information of all devices in target group
+$bark                           bark like a japanese doggo
+$lookupinterval <time>         set lookup interval time (seconds)
+$
