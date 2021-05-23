@@ -14,4 +14,4 @@ def utilize_graph(inocts, speed, delta_time, desc):
 
 def utilize_cal(inoct1, inoct2, speed, delta_time):
     """calculate ultilization ratio of interface"""
-    return (inoct2-inoct1)*8/speed*100
+    return (inoct2-inoct1)*8/delta_time/speed*100

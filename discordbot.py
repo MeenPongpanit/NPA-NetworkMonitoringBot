@@ -17,9 +17,21 @@ client.threshold = 100
 
 async def lookup():
     while True:
+        alert_list = []
         if client.lookup:
             for device in client.devices.values():
                 device.lookup_octet()
+                device.update_utilization(client.lookup_interval)
+                for index in device.interfaces:
+                    # if len(device.inoctets[index]) < 2:
+                    #     break
+                    if device.interfaces[index].get('util', 0) > client.threshold:
+                        alert_list.append((device.ip, device.interfaces[index]['desc']))
+        alert_txt = ', '.join(user.mention for user in client.notigroup) + '\n'
+        alert_txt += '\n'.join([f'device:{dev} | interface:{inf} utilization is over the threshold \
+({client.threshold}%)' for dev, inf in alert_list])
+        if alert_list:
+            await client.get_channel(client.main_channel).send(alert_txt)
         await sleep(client.lookup_interval)
 
 
@@ -38,11 +50,12 @@ async def on_message(message):
     if message.author == client.user:
         return
     
-    if message.content.startswith('$set_noti_threshold'):
+    if message.content.startswith('$threshold'):
         _, threshold = message.content.split()
         client.threshold = float(threshold)
+        await message.channel.send(f'Notification threshold was set. ({client.threshold}%)')
 
-    if message.content == '$interfacegraph':
+    if message.content == '$ultilization':
         for device in client.devices.values():
             await message.channel.send(f'{device.ip}:')
             for index in device.inoctets:
@@ -54,12 +67,12 @@ async def on_message(message):
         interval = int(interval)
         client.lookup_interval = interval
         for device in client.devices.values():
-            device.update_interval()
+            device.update_inoct()
         await message.channel.send(f'lookup interval is now set. ({interval} seconds)')
 
     if message.content == '$togglelookup':
         for device in client.devices.values():
-            device.update_interval()
+            device.update_inoct()
         await message.channel.send(f'Lookup: {("OFF", "ON")[client.lookup]}->{("OFF", "ON")[not client.lookup]}')
         client.lookup = not client.lookup
 
@@ -76,7 +89,7 @@ async def on_message(message):
     if message.content.startswith('$hello'):
         await message.channel.send(f'Hi, {message.author.mention}.') 
 
-    if message.content.startswith('$netgraph'):
+    if message.content.startswith('$ant'):
         await message.channel.send('Here! Your pic.', file=discord.File('ant.jpg'))
 
     if message.content.startswith('$addtarget'):

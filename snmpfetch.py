@@ -1,5 +1,6 @@
 from pysnmp.hlapi import *
 from pysnmp.proto.rfc1905 import VarBind
+from visualize import utilize_cal
 
 class DEVICE():
     def __init__(self, ip):
@@ -8,7 +9,17 @@ class DEVICE():
         self.getifspeed()
         self.inoctets = {index:[] for index in self.interfaces}
 
-    def update_interval(self):
+
+    def update_utilization(self, deltatime):
+        for index in self.interfaces:
+            if len(self.inoctets[index]) < 2:
+                return
+            speed = self.interfaces[index]['speed']
+            inoct1, inoct2 = self.inoctets[index][-2:]
+            self.interfaces[index]['util'] = utilize_cal(inoct1, inoct2, speed, deltatime)
+            print(self.interfaces[index]['util'])
+
+    def update_inoct(self):
         """Update Interval"""
         self.inoctets = {index:[] for index in self.interfaces}
     
@@ -16,7 +27,7 @@ class DEVICE():
         interfaces_inoct = iter(snmp_walk(self.ip, '1.3.6.1.2.1.2.2.1.10'))
         for index in self.interfaces:
             self.inoctets[index].append(int(next(interfaces_inoct)))
-        print(self.inoctets)
+        # print(self.inoctets)
 
     def getifspeed(self):
         interfaces_desc = iter(snmp_walk(self.ip, '1.3.6.1.2.1.2.2.1.5'))
